@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- Definición del espacio de nombres y esquemas utilizados en MuleSoft -->
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" 
+      xmlns:http="http://www.mulesoft.org/schema/mule/http"
+      xmlns="http://www.mulesoft.org/schema/mule/core"
+      xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" 
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+      xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+      http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+      http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+
+    <!-- Configuración del listener HTTP -->
+    <http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="9bfa0ec9-595d-47ef-8a89-10c7379e5750" >
+        <http:listener-connection host="0.0.0.0" port="8081" /> <!-- Escucha en todas las interfaces en el puerto 8081 -->
+    </http:listener-config>
+
+    <!-- Definición del flujo principal -->
+    <flow name="pokedexapiFlow" doc:id="db586000-b572-4644-b4f8-42c5b4245979" >
+        
+        <!-- Listener HTTP que recibe las solicitudes en la ruta /api/pokemon -->
+        <http:listener doc:name="Listener" doc:id="aa20b743-a982-46c8-8af0-8c9460e27322" config-ref="HTTP_Listener_config" path="/api/pokemon"/>
+        
+        <!-- Transformación de mensaje usando DataWeave -->
+        <ee:transform doc:name="Transform Message" doc:id="93570e59-31c6-4ae3-9af7-ae102356ffce" >
+            <ee:message >
+                <ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+
+// Obtiene parámetros de consulta: nombre e id del Pokémon
+var pokemonName = attributes.queryParams.name default "pikachu"
+var pokemonId = attributes.queryParams.id default ""
+
+// Obtiene datos de la PokeAPI usando el ID o el nombre
+var pokeData = if (pokemonId != "") 
+               readUrl("https://pokeapi.co/api/v2/pokemon/" ++ trim(pokemonId)) 
+               else 
+               readUrl("https://pokeapi.co/api/v2/pokemon/" ++ trim(pokemonName)) as Object
+
+// Obtiene datos de las áreas donde se encuentra el Pokémon
+var locationData = readUrl(pokeData.location_area_encounters) as Array
+
+---
+{
+  nombre: pokeData.name,
+  tipo: (pokeData.types map ((t) -> t."type".name)) joinBy ", ",
+  peso: pokeData.weight,
+  estatura: pokeData.height,
+  ID: "#" ++ (pokeData.id as Number as String {format: "0000"}),
+  movimientos: (pokeData.moves map ((m) -> m.move.name)) joinBy ", ",
+  estadisticas: {
+    ataque: (pokeData.stats filter ((s) -> s.stat.name == "attack"))[0].base_stat,
+    defensa: (pokeData.stats filter ((s) -> s.stat.name == "defense"))[0].base_stat,
+    velocidad: (pokeData.stats filter ((s) -> s.stat.name == "speed"))[0].base_stat
+  },
+  fecha: now() as String {format: "HH:mm:ss dd-MM-yyyy"},
+  areas: locationData map ((loc) -> loc.location_area.name)
+}
+]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+    </flow>
+</mule>

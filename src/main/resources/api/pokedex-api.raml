@@ -1,0 +1,47 @@
+#%RAML 1.0
+
+# Definición de la API Pokedex
+# RAML (RESTful API Modeling Language) versión 1.0
+
+title: Pokedex API  # Título de la API
+baseUri: http://localhost:8081/api  # URL base donde se expone la API
+version: v1  # Versión de la API
+
+# Definición de tipos de datos utilizados en la API
+types:
+  PokemonResponse:
+    type: object  # Define la respuesta como un objeto JSON
+    properties:
+      id: string  # Identificador del Pokémon
+      name: string  # Nombre del Pokémon
+      types: string[]  # Lista de tipos del Pokémon (agua, fuego, etc.)
+      weight: number  # Peso del Pokémon
+      height: number  # Altura del Pokémon
+      moves: string  # Lista de movimientos del Pokémon en formato de cadena
+      attack: number  # Valor de ataque del Pokémon
+      defense: number  # Valor de defensa del Pokémon
+      speed: number  # Valor de velocidad del Pokémon
+      capture_date: string  # Fecha de captura del Pokémon
+      locations: string[]  # Lista de ubicaciones donde se puede encontrar el Pokémon
+
+# Endpoint para obtener información de un Pokémon por nombre
+/pokemon:
+  get:
+    queryParameters:
+      name:
+        type: string  # Parámetro de consulta para buscar un Pokémon por nombre
+        required: true  # Es obligatorio enviar este parámetro en la consulta
+    responses:
+      200:
+        body:
+          application/json:
+            type: PokemonResponse  # Respuesta en formato JSON con la estructura definida en PokemonResponse
+
+# Endpoint para obtener información de un Pokémon por ID
+/pokemon/{id}:
+  get:
+    responses:
+      200:
+        body:
+          application/json:
+            type: PokemonResponse  # Respuesta en formato JSON con la estructura definida en PokemonResponse
